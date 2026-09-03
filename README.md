@@ -18,7 +18,7 @@ crm-rag-project/
 │   │   ├── main.py          # API 入口 /api/chat
 │   │   ├── agent.py         # ProductQueryAgent（對應提案 #1 流程 01~04）
 │   │   ├── orders.py        # 模擬訂單資料（對應提案 #2）
-│   │   ├── documents.py     # 產品知識庫來源（讀取 app/data/products_20_quirky.md）
+│   │   ├── documents.py     # 知識庫來源（讀取 app/data/ 底下的產品文案 + 保固/退換貨/運送付款/FAQ 政策文件）
 │   │   ├── llm.py           # Qwen2.5 載入與生成
 │   │   └── rag/              # chunking / embedding / Chroma 向量資料庫
 │   └── requirements.txt

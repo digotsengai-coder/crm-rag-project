@@ -158,5 +158,5 @@ def _handle_chat(text: str, history: list, provider: str) -> ChatResponse:
 
     agent = get_agent()
     answer, retrieved = agent.generate_answer(text, history=history, provider=provider)
-    top_source = retrieved[0]["product_name"] if retrieved else None
+    top_source = retrieved[0]["topic"] if retrieved else None
     return ChatResponse(type="product", text=answer, source=top_source, sources=retrieved)

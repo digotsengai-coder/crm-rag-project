@@ -9,7 +9,8 @@
 - 每一條規格 -> 各自一個 chunk（適合問特定規格，例如「續航多久」）
 - 奇特彩蛋 -> 一個 chunk（適合「有什麼特別/隱藏功能」）
 每個 chunk 文字前面都補上「產品名稱（分類）— 」當前綴，讓 chunk 被單獨檢索出來時，
-LLM 也知道在講哪個產品；metadata 額外帶 product_name / category / product_id，方便未來篩選。
+LLM 也知道在講哪個產品；metadata 額外帶 topic / category / product_id，方便未來篩選。
+topic 欄位是通用命名（跟政策文件 policy_parser.py 共用同一套 chunk 格式），這裡的值就是產品名稱。
 """
 import re
 
@@ -34,7 +35,7 @@ def _parse_product_id_map(full_text: str) -> dict:
 
 
 def parse_products(full_text: str, source: str) -> list[dict]:
-    """回傳 [{"text":..., "source":..., "product_name":..., "category":..., "product_id":...}, ...]"""
+    """回傳 [{"text":..., "source":..., "topic":..., "category":..., "product_id":...}, ...]"""
     id_map = _parse_product_id_map(full_text)
 
     # 用 --- 切出每個產品區塊（第一段是檔案開頭的說明文字，最後一段是總表，都不是產品內容）
@@ -49,7 +50,7 @@ def parse_products(full_text: str, source: str) -> list[dict]:
         name_en = header_match.group("name_en").strip()
         name_zh = header_match.group("name_zh").strip()
         category = header_match.group("category").strip()
-        product_name = f"{name_en}（{name_zh}）"
+        topic = f"{name_en}（{name_zh}）"
         product_id = id_map.get(name_en)
         prefix = f"{name_en}（{name_zh}，{category}）— "
 
@@ -57,7 +58,7 @@ def parse_products(full_text: str, source: str) -> list[dict]:
             chunks.append({
                 "text": prefix + text.strip(),
                 "source": source,
-                "product_name": product_name,
+                "topic": topic,
                 "category": category,
                 "product_id": product_id or "",
             })

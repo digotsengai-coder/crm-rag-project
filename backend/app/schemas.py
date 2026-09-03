@@ -23,7 +23,7 @@ class ChatRequest(BaseModel):
 class SourceRef(BaseModel):
     text: str
     source: str
-    product_name: str = ""
+    topic: str = ""
     distance: float
 
 

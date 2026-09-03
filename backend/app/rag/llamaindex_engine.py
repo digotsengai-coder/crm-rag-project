@@ -2,9 +2,10 @@
 「LlamaIndex」RAG 引擎：用 LlamaIndex 的 VectorStoreIndex 取代自訂的 Chroma + 手寫檢索邏輯，
 跟 custom_engine.py 提供同一種介面 retrieve(query, top_k)，方便用 RAG_ENGINE 設定切換。
 
-語意拆分（每個產品的介紹/規格/彩蛋各自一個片段）仍然沿用 product_parser.py 的邏輯，
-因為那是這份文件格式特有的知識，跟「用哪套框架做向量索引/檢索」是兩件事；
-這裡示範的是 LlamaIndex 版本的索引建立、持久化、查詢流程，而不是重新發明語意拆分規則。
+語意拆分（產品的介紹/規格/彩蛋、政策文件的各小節）仍然沿用 app/documents.py 的 get_all_chunks()，
+跟 custom_engine.py 共用同一套拆分結果，因為「怎麼切」是文件格式特有的知識，跟「用哪套框架做
+向量索引/檢索」是兩件事；這裡示範的是 LlamaIndex 版本的索引建立、持久化、查詢流程，
+而不是重新發明語意拆分規則。
 
 索引持久化在 settings.LLAMAINDEX_PERSIST_DIR；若知識庫內容有更動，需要手動刪除該目錄以重建索引，
 跟 custom 引擎的 CHROMA_PERSIST_DIR 是同樣的機制、只是分開存放，兩套引擎的索引檔互不影響。
@@ -17,8 +18,7 @@ from llama_index.core.schema import TextNode
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from app.config import settings
-from app.documents import load_source_text, SOURCE_NAME
-from app.rag.product_parser import parse_products
+from app.documents import get_all_chunks
 
 
 def _get_embed_model():
@@ -32,14 +32,14 @@ def _get_embed_model():
 
 
 def _build_nodes() -> list[TextNode]:
-    chunks = parse_products(load_source_text(), source=SOURCE_NAME)
+    chunks = get_all_chunks()
     return [
         TextNode(
             text=c["text"],
-            id_=f"{c['product_id'] or c['product_name']}-{i}",
+            id_=f"{c['product_id'] or c['topic']}-{i}",
             metadata={
                 "source": c["source"],
-                "product_name": c["product_name"],
+                "topic": c["topic"],
                 "category": c["category"],
                 "product_id": c["product_id"],
             },
@@ -77,7 +77,7 @@ class LlamaIndexRetriever:
             retrieved.append({
                 "text": n.node.get_content(),
                 "source": meta.get("source", ""),
-                "product_name": meta.get("product_name", ""),
+                "topic": meta.get("topic", ""),
                 "category": meta.get("category", ""),
                 "distance": 1 - score,
             })

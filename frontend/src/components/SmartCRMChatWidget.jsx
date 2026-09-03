@@ -10,7 +10,7 @@ const ORDER_STAGES = [
   { key: "done", label: "已送達", icon: CheckCircle2 },
 ];
 
-const QUICK_REPLIES = ["無線滑鼠支援多少 DPI？", "查詢訂單 A12345", "智慧手錶有什麼特別功能？"];
+const QUICK_REPLIES = ["無線滑鼠支援多少 DPI？", "查詢訂單 A12345", "退貨要幾天內申請？"];
 
 async function askBackend(message, history, provider) {
   const res = await fetch(`${API_BASE_URL}/api/chat`, {
@@ -55,7 +55,7 @@ function ProductAnswer({ text, source }) {
     <div className="ccw-row ccw-row-bot">
       <div className="ccw-bubble ccw-bubble-bot">
         <p className="ccw-bubble-text">{text}</p>
-        {source && <span className="ccw-source-tag">相關產品：{source}</span>}
+        {source && <span className="ccw-source-tag">相關主題：{source}</span>}
       </div>
     </div>
   );

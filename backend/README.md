@@ -61,7 +61,11 @@ Embedding 與本地 LLM 模型（第一次啟動會需要下載，依網路速�
 `RAG_NO_INFO_THRESHOLDS` 分開設定「查無資訊」的判斷門檻。索引檔也分開存放
 （`chroma_data/` vs `llamaindex_data/`），互不影響，可以兩套都建好、隨時切換不用重建。
 
-若 `products_20_quirky.md` 的內容有更動，兩套引擎的索引都要手動刪除對應目錄才會重建。
+知識庫檔案都在 `app/data/`：`products_20_quirky.md`（20 項產品文案，用 `product_parser.py` 拆分）
+與 `warranty_policy.md` / `return_policy.md` / `shipping_payment.md` / `faq.md`（保固、退換貨、運送
+付款、常見問題，用 `policy_parser.py` 依 markdown 標題拆分）。`app/documents.py` 的 `get_all_chunks()`
+把兩類文件的 chunk 合併成一份清單，兩套 RAG 引擎都吃同一份。若知識庫內容有更動，兩套引擎的索引
+都要手動刪除對應目錄（`chroma_data/` / `llamaindex_data/`）才會重建。
 
 ## 注意事項
 

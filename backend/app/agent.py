@@ -12,8 +12,9 @@ from app.llm import get_llm
 from app.providers import generate_with_provider, ProviderNotConfigured
 
 SYSTEM_PROMPT = (
-    "你是客服機器人，請根據提供的產品資訊片段回答顧客問題，不可使用片段以外的知識自行編造內容。"
-    "回答時請在句子後方以（產品：產品名稱）的格式標註是哪個產品的資訊。"
+    "你是客服機器人，請根據提供的資訊片段回答顧客問題（可能是產品規格，也可能是保固、退換貨、"
+    "運送付款等政策說明），不可使用片段以外的知識自行編造內容。"
+    "回答時請在句子後方以（相關主題：主題名稱）的格式標註資訊來源。"
 )
 
 # 線上付費模型（Claude/GPT/Gemini/Grok）能力足夠強，可以自己準確判斷「片段裡有沒有答案」，
@@ -63,13 +64,13 @@ class ProductQueryAgent:
 
     def _build_prompt(self, query: str, retrieved_chunks) -> str:
         context_text = "\n\n".join(
-            f"[片段 {i+1}，產品：{r['product_name']}]\n{r['text']}"
+            f"[片段 {i+1}，主題：{r['topic']}]\n{r['text']}"
             for i, r in enumerate(retrieved_chunks)
         )
         return (
-            f"產品資訊片段：\n{context_text}\n\n"
+            f"資訊片段：\n{context_text}\n\n"
             f"顧客問題：{query}\n\n"
-            f"請根據以上產品資訊片段回答顧客問題。"
+            f"請根據以上資訊片段回答顧客問題。"
         )
 
     def generate_answer(

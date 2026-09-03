@@ -8,8 +8,7 @@
 """
 import chromadb
 from app.config import settings
-from app.documents import load_source_text, SOURCE_NAME
-from app.rag.product_parser import parse_products
+from app.documents import get_all_chunks
 from app.rag.embedding import embed_passages
 
 _collection = None
@@ -24,18 +23,18 @@ def build_index():
     client = _get_client()
     collection = client.get_or_create_collection(name="product_kb")
 
-    chunks = parse_products(load_source_text(), source=SOURCE_NAME)
+    chunks = get_all_chunks()
     all_texts = [c["text"] for c in chunks]
     all_metadatas = [
         {
             "source": c["source"],
-            "product_name": c["product_name"],
+            "topic": c["topic"],
             "category": c["category"],
             "product_id": c["product_id"],
         }
         for c in chunks
     ]
-    all_ids = [f"{c['product_id'] or c['product_name']}-{i}" for i, c in enumerate(chunks)]
+    all_ids = [f"{c['product_id'] or c['topic']}-{i}" for i, c in enumerate(chunks)]
 
     embeddings = embed_passages(all_texts)
     collection.add(ids=all_ids, embeddings=embeddings, documents=all_texts, metadatas=all_metadatas)
