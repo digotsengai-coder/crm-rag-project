@@ -7,7 +7,7 @@ USE_SMALL_MODEL=true：Qwen2.5-1.5B-Instruct，CPU 也可執行（速度較慢�
 模型只在第一次呼叫時載入（lazy loading），第一次呼叫 /api/chat 會需要等待下載與載入模型。
 """
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from app.config import settings
 
 _tokenizer = None
@@ -28,6 +28,8 @@ def get_llm():
             device_map="auto",
         )
     else:
+        from transformers import BitsAndBytesConfig
+
         model_name = settings.LLM_MODEL_NAME_FULL
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
