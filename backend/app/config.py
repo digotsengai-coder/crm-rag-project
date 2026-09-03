@@ -39,5 +39,16 @@ class Settings:
     # 線上付費 LLM 的 API key／模型名稱設定檔（不進 git，範本見 llm_keys.example.json）
     LLM_KEYS_PATH: str = os.getenv("LLM_KEYS_PATH", "./llm_keys.json")
 
+    # RAG 檢索引擎："custom"（自訂 Chroma + 手寫檢索，預設）或 "llamaindex"（用 LlamaIndex 的 VectorStoreIndex）
+    # 兩套引擎介面相同，見 app/rag/engine.py；語意拆分規則兩套共用（app/rag/product_parser.py）。
+    RAG_ENGINE: str = os.getenv("RAG_ENGINE", "custom")
+
+    # LlamaIndex 引擎的索引持久化目錄，跟 custom 引擎的 CHROMA_PERSIST_DIR 分開存放
+    LLAMAINDEX_PERSIST_DIR: str = os.getenv("LLAMAINDEX_PERSIST_DIR", "./llamaindex_data")
+
+    # 兩套引擎的「有沒有查到答案」距離門檻分開設定，因為分數尺度不同、不能共用同一個數字
+    # （custom 用原始 L2 距離，llamaindex 用 1 - 相似度分數，經驗值需要各自校準）
+    RAG_NO_INFO_THRESHOLDS: dict = {"custom": 0.30, "llamaindex": 0.30}
+
 
 settings = Settings()
