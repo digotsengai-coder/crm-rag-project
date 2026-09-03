@@ -21,6 +21,9 @@ class Settings:
     # Chroma 向量資料庫持久化目錄；正式上線建議指向獨立磁碟路徑並定期備份
     CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_PERSIST_DIR", "./chroma_data")
 
+    # 對話紀錄 SQLite 檔案路徑，供未來「管理者摘要當日提問」功能使用
+    CHAT_LOG_DB_PATH: str = os.getenv("CHAT_LOG_DB_PATH", "./chat_log.db")
+
     CORS_ORIGINS: list = [
         origin.strip()
         for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")

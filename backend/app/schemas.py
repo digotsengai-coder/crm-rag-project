@@ -27,3 +27,9 @@ class ChatResponse(BaseModel):
     status: Optional[int] = None
     eta: Optional[str] = None
     items: Optional[str] = None
+
+
+class DailySummaryResponse(BaseModel):
+    date: str
+    question_count: int
+    summary: str

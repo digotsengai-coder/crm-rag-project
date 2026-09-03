@@ -9,20 +9,26 @@ import re
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.schemas import ChatRequest, ChatResponse
+from app.schemas import ChatRequest, ChatResponse, DailySummaryResponse
 from app.agent import get_agent
 from app.orders import get_order
+from app.chat_log import init_db, log_chat
+from app.summary import summarize_day
+
+DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 啟動時就預載 Embedding / LLM 模型（已快取在本機，只是載入記憶體，不會重新下載），
     # 避免第一位使用者送出訊息時要空等模型載入。
+    init_db()
     get_agent()
     yield
 
@@ -68,11 +74,42 @@ def warmup():
     return {"status": "models loaded"}
 
 
+@app.get("/api/admin/summary", response_model=DailySummaryResponse)
+def admin_summary(date: str | None = None):
+    """
+    管理者查看指定日期（預設今天，UTC）使用者提問的主題摘要。
+
+    注意：目前沒有任何身分驗證，正式上線前必須加上管理者登入/權限檢查，
+    否則任何人都能呼叫這支 API 看到顧客提問內容。
+    """
+    if date is None:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    elif not DATE_PATTERN.match(date):
+        raise HTTPException(status_code=400, detail="date 格式須為 YYYY-MM-DD")
+
+    result = summarize_day(date)
+    return DailySummaryResponse(**result)
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(req: ChatRequest, request: Request):
-    _check_rate_limit(request.client.host if request.client else "unknown")
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
 
     text = req.message.strip()
+    response = _handle_chat(text)
+
+    try:
+        log_text = response.text if response.text is not None else f"[訂單 {response.code}]"
+        log_chat(message=text, response_type=response.type, response_text=log_text, client_ip=client_ip)
+    except Exception:
+        # 對話紀錄失敗不該讓使用者的聊天請求跟著失敗
+        pass
+
+    return response
+
+
+def _handle_chat(text: str) -> ChatResponse:
     if not text:
         return ChatResponse(type="text", text="請輸入您的問題。")
 

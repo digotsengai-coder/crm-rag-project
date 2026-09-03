@@ -6,12 +6,18 @@ USE_SMALL_MODEL=true：Qwen2.5-1.5B-Instruct，CPU 也可執行（速度較慢�
 
 模型只在第一次呼叫時載入（lazy loading），第一次呼叫 /api/chat 會需要等待下載與載入模型。
 """
+import threading
+
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from app.config import settings
 
 _tokenizer = None
 _model = None
+
+# 同一顆模型不管是「產品問答」還是「當日提問摘要」都會用到，
+# 用同一把鎖讓所有 LLM 生成請求排隊，避免併發搶 CPU/GPU。
+_generation_lock = threading.Lock()
 
 
 def get_llm():
@@ -54,3 +60,16 @@ def get_llm():
         )
 
     return _tokenizer, _model
+
+
+def generate(messages: list[dict], max_new_tokens: int = 512) -> str:
+    """給定 chat messages（[{role, content}]），跑一次 LLM 生成並回傳文字。"""
+    tokenizer, model = get_llm()
+
+    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    inputs = tokenizer([text], return_tensors="pt").to(model.device)
+
+    with _generation_lock:
+        output_ids = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
+    generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
+    return tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
