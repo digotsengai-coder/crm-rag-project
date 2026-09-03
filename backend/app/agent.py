@@ -39,6 +39,17 @@ class ProductQueryAgent:
             retrieved.append({"text": doc, "source": meta["source"], "distance": dist})
         return retrieved
 
+    def _build_retrieval_query(self, query: str, history) -> str:
+        if not history:
+            return query
+        last_user_turn = next(
+            (h["content"] for h in reversed(history) if h.get("role") == "user"),
+            None,
+        )
+        if not last_user_turn:
+            return query
+        return f"{last_user_turn} {query}"
+
     def _build_prompt(self, query: str, retrieved_chunks) -> str:
         context_text = "\n\n".join(
             f"[片段 {i+1}，來源：{r['source']}]\n{r['text']}"
@@ -50,16 +61,25 @@ class ProductQueryAgent:
             f"請根據以上產品資訊片段回答顧客問題。"
         )
 
-    def generate_answer(self, query: str, top_k: int = 3, max_new_tokens: int = 512):
+    def generate_answer(self, query: str, history=None, top_k: int = 3, max_new_tokens: int = 512):
+        """
+        history：之前幾輪對話 [{"role": "user"|"assistant", "content": ...}, ...]，
+        用來讓機器人理解「那電池呢？」這種依賴上文的追問。
+
+        「那電池呢？」這句話本身沒有主詞，單獨拿去向量化檢索會查到不相關的片段
+        （例如查成電視遙控器電池而不是掃地機器人電池）。所以檢索用的查詢字串會把
+        上一輪使用者的問題也接進來，補上缺的主詞；但送給 LLM 的「顧客問題」欄位
+        仍用原始這句話，回答語氣才自然。
+        """
         clean_query = self.receive_query(query)
-        query_embedding = self.vectorize_query(clean_query)
+        retrieval_query = self._build_retrieval_query(clean_query, history)
+        query_embedding = self.vectorize_query(retrieval_query)
         retrieved_chunks = self.retrieve_from_kb(query_embedding, top_k=top_k)
         user_prompt = self._build_prompt(clean_query, retrieved_chunks)
 
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
+        messages = [{"role": "system", "content": self.system_prompt}]
+        messages.extend(history or [])
+        messages.append({"role": "user", "content": user_prompt})
         answer = llm_generate(messages, max_new_tokens=max_new_tokens)
 
         return answer, retrieved_chunks

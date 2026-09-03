@@ -12,16 +12,24 @@ const ORDER_STAGES = [
 
 const QUICK_REPLIES = ["掃地機器人續航多久？", "查詢訂單 A12345", "冷氣沒連網可以用嗎？"];
 
-async function askBackend(message) {
+async function askBackend(message, history) {
   const res = await fetch(`${API_BASE_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history }),
   });
   if (!res.ok) {
     throw new Error(`後端回應錯誤：${res.status}`);
   }
   return res.json();
+}
+
+// 訂單卡片沒有單一文字內容（type == "order"），不適合塞進對話歷史給 LLM，直接略過；
+// 只有文字類回覆（type == "text" | "product"）才會被記進歷史，讓機器人記得上下文。
+function buildHistory(messages) {
+  return messages
+    .filter((m) => typeof m.text === "string" && m.text.length > 0)
+    .map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
 }
 
 function TypingIndicator() {
@@ -100,11 +108,12 @@ export default function SmartCRMChatWidget() {
   async function sendMessage(text) {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
+    const history = buildHistory(messages);
     setMessages((prev) => [...prev, { role: "user", type: "text", text: trimmed }]);
     setInput("");
     setIsTyping(true);
     try {
-      const reply = await askBackend(trimmed);
+      const reply = await askBackend(trimmed, history);
       setMessages((prev) => [...prev, { role: "bot", ...reply }]);
     } catch (err) {
       setMessages((prev) => [

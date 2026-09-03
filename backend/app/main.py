@@ -17,8 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.schemas import ChatRequest, ChatResponse, DailySummaryResponse
 from app.agent import get_agent
-from app.orders import get_order
-from app.chat_log import init_db, log_chat
+from app.orders import get_order, init_db as init_orders_db
+from app.chat_log import init_db as init_chat_log_db, log_chat
 from app.summary import summarize_day
 
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -28,7 +28,8 @@ DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 async def lifespan(app: FastAPI):
     # 啟動時就預載 Embedding / LLM 模型（已快取在本機，只是載入記憶體，不會重新下載），
     # 避免第一位使用者送出訊息時要空等模型載入。
-    init_db()
+    init_chat_log_db()
+    init_orders_db()
     get_agent()
     yield
 
@@ -97,7 +98,9 @@ def chat(req: ChatRequest, request: Request):
     _check_rate_limit(client_ip)
 
     text = req.message.strip()
-    response = _handle_chat(text)
+    history = [{"role": h.role, "content": h.content} for h in req.history]
+    history = history[-(settings.MAX_HISTORY_TURNS * 2):]
+    response = _handle_chat(text, history)
 
     try:
         log_text = response.text if response.text is not None else f"[訂單 {response.code}]"
@@ -109,7 +112,7 @@ def chat(req: ChatRequest, request: Request):
     return response
 
 
-def _handle_chat(text: str) -> ChatResponse:
+def _handle_chat(text: str, history: list) -> ChatResponse:
     if not text:
         return ChatResponse(type="text", text="請輸入您的問題。")
 
@@ -136,6 +139,6 @@ def _handle_chat(text: str) -> ChatResponse:
         )
 
     agent = get_agent()
-    answer, retrieved = agent.generate_answer(text)
+    answer, retrieved = agent.generate_answer(text, history=history)
     top_source = retrieved[0]["source"] if retrieved else None
     return ChatResponse(type="product", text=answer, source=top_source, sources=retrieved)

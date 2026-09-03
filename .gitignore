@@ -5,6 +5,7 @@ backend/**/__pycache__/
 backend/.env
 backend/chroma_data/
 backend/chat_log.db
+backend/orders.db
 *.pyc
 
 # Node
