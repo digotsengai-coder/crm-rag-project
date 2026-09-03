@@ -18,7 +18,7 @@ crm-rag-project/
 │   │   ├── main.py          # API 入口 /api/chat
 │   │   ├── agent.py         # ProductQueryAgent（對應提案 #1 流程 01~04）
 │   │   ├── orders.py        # 模擬訂單資料（對應提案 #2）
-│   │   ├── documents.py     # 模擬產品文件（RAG 知識庫來源）
+│   │   ├── documents.py     # 產品知識庫來源（讀取 app/data/products_20_quirky.md）
 │   │   ├── llm.py           # Qwen2.5 載入與生成
 │   │   └── rag/              # chunking / embedding / Chroma 向量資料庫
 │   └── requirements.txt
@@ -72,7 +72,8 @@ npm run dev
 ### 3) 測試
 
 在聊天視窗輸入：
-- 「掃地機器人的電池可以用多久？」→ 觸發 #1 產品問答（RAG + LLM）
+- 「無線滑鼠支援多少 DPI？」→ 觸發 #1 產品問答（RAG + LLM）
+- 「智慧手錶有什麼特別功能？」→ 觸發 #1 產品問答，回答會提到隱藏的彩蛋錶面
 - 「查詢訂單 A12345」→ 觸發 #2 訂單查詢（回傳配送進度時間軸）
 
 ## 之後可以延伸的部分

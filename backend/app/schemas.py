@@ -16,11 +16,14 @@ class ChatRequest(BaseModel):
     # 前端傳回目前對話中「之前幾輪」的訊息，用來讓機器人記得上下文（例如「那電池呢？」）。
     # 只有產品問答（type == "product"）這條路徑會用到；訂單查詢是規則比對，不需要歷史。
     history: List[HistoryTurn] = Field(default_factory=list, max_length=20)
+    # 要用哪個 LLM 回答；local 是本地 1.5B/7B 模型，其餘是線上付費 API（見 app/providers.py）
+    provider: Literal["local", "anthropic", "openai", "google", "xai"] = "local"
 
 
 class SourceRef(BaseModel):
     text: str
     source: str
+    product_name: str = ""
     distance: float
 
 
@@ -43,3 +46,9 @@ class DailySummaryResponse(BaseModel):
     date: str
     question_count: int
     summary: str
+
+
+class ProviderInfo(BaseModel):
+    id: str
+    label: str
+    configured: bool

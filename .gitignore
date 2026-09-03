@@ -6,6 +6,7 @@ backend/.env
 backend/chroma_data/
 backend/chat_log.db
 backend/orders.db
+backend/llm_keys.json
 *.pyc
 
 # Node

@@ -7,8 +7,13 @@ pydantic==2.9.2
 sentence-transformers==3.0.1
 chromadb==0.5.5
 
-# LLM
+# LLM（本地）
 torch==2.4.0
 transformers==4.44.2
 accelerate==0.33.0
 bitsandbytes==0.43.3
+
+# LLM（線上付費 API；xAI Grok 相容 OpenAI SDK 格式，不需要另外的套件）
+anthropic==0.34.2
+openai==1.51.0
+google-generativeai==0.8.3

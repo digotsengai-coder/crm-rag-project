@@ -10,17 +10,23 @@ const ORDER_STAGES = [
   { key: "done", label: "已送達", icon: CheckCircle2 },
 ];
 
-const QUICK_REPLIES = ["掃地機器人續航多久？", "查詢訂單 A12345", "冷氣沒連網可以用嗎？"];
+const QUICK_REPLIES = ["無線滑鼠支援多少 DPI？", "查詢訂單 A12345", "智慧手錶有什麼特別功能？"];
 
-async function askBackend(message, history) {
+async function askBackend(message, history, provider) {
   const res = await fetch(`${API_BASE_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, provider }),
   });
   if (!res.ok) {
     throw new Error(`後端回應錯誤：${res.status}`);
   }
+  return res.json();
+}
+
+async function fetchProviders() {
+  const res = await fetch(`${API_BASE_URL}/api/providers`);
+  if (!res.ok) throw new Error(`後端回應錯誤：${res.status}`);
   return res.json();
 }
 
@@ -49,7 +55,7 @@ function ProductAnswer({ text, source }) {
     <div className="ccw-row ccw-row-bot">
       <div className="ccw-bubble ccw-bubble-bot">
         <p className="ccw-bubble-text">{text}</p>
-        {source && <span className="ccw-source-tag">來源：{source}</span>}
+        {source && <span className="ccw-source-tag">相關產品：{source}</span>}
       </div>
     </div>
   );
@@ -92,11 +98,13 @@ export default function SmartCRMChatWidget() {
     {
       role: "bot",
       type: "text",
-      text: "您好，我是智慧家電線上客服，可以問我產品規格、保固，或是輸入訂單編號查詢配送狀態喔。",
+      text: "您好，我是線上客服，可以問我任何產品的規格、特色，或是輸入訂單編號查詢配送狀態喔。",
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [providers, setProviders] = useState([{ id: "local", label: "本地 1.5B/7B（免費，速度較慢）", configured: true }]);
+  const [provider, setProvider] = useState("local");
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -104,6 +112,14 @@ export default function SmartCRMChatWidget() {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    fetchProviders()
+      .then(setProviders)
+      .catch(() => {
+        // 拿不到 provider 清單就維持預設只有本地模型，不影響聊天功能
+      });
+  }, []);
 
   async function sendMessage(text) {
     const trimmed = text.trim();
@@ -113,7 +129,7 @@ export default function SmartCRMChatWidget() {
     setInput("");
     setIsTyping(true);
     try {
-      const reply = await askBackend(trimmed, history);
+      const reply = await askBackend(trimmed, history, provider);
       setMessages((prev) => [...prev, { role: "bot", ...reply }]);
     } catch (err) {
       setMessages((prev) => [
@@ -241,6 +257,28 @@ export default function SmartCRMChatWidget() {
         }
         .ccw-close-btn:hover { background: rgba(255,255,255,0.1); }
         .ccw-close-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+        .ccw-model-bar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 14px;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border);
+          font-size: 12px;
+        }
+        .ccw-model-bar label { color: var(--text-muted); flex-shrink: 0; }
+        .ccw-model-select {
+          flex: 1;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 4px 8px;
+          font-size: 12px;
+          font-family: inherit;
+          color: var(--text);
+          background: var(--surface);
+        }
+        .ccw-model-select:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
 
         .ccw-messages {
           flex: 1;
@@ -428,6 +466,23 @@ export default function SmartCRMChatWidget() {
             <button className="ccw-close-btn" aria-label="收合聊天視窗" onClick={() => setIsOpen(false)}>
               <X size={18} />
             </button>
+          </div>
+
+          <div className="ccw-model-bar">
+            <label htmlFor="ccw-model-select">回答模型</label>
+            <select
+              id="ccw-model-select"
+              className="ccw-model-select"
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+            >
+              {providers.map((p) => (
+                <option key={p.id} value={p.id} disabled={!p.configured}>
+                  {p.label}
+                  {!p.configured ? "（尚未設定 API key）" : ""}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="ccw-messages" ref={listRef}>

@@ -36,5 +36,8 @@ class Settings:
         if origin.strip()
     ]
 
+    # 線上付費 LLM 的 API key／模型名稱設定檔（不進 git，範本見 llm_keys.example.json）
+    LLM_KEYS_PATH: str = os.getenv("LLM_KEYS_PATH", "./llm_keys.json")
+
 
 settings = Settings()

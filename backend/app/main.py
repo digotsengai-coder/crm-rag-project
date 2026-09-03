@@ -15,11 +15,20 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.schemas import ChatRequest, ChatResponse, DailySummaryResponse
+from app.schemas import ChatRequest, ChatResponse, DailySummaryResponse, ProviderInfo
 from app.agent import get_agent
 from app.orders import get_order, init_db as init_orders_db
 from app.chat_log import init_db as init_chat_log_db, log_chat
 from app.summary import summarize_day
+from app.providers import is_configured
+
+PROVIDER_LABELS = {
+    "local": "本地 1.5B/7B（免費，速度較慢）",
+    "anthropic": "Claude",
+    "openai": "GPT",
+    "google": "Gemini",
+    "xai": "Grok",
+}
 
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -75,6 +84,15 @@ def warmup():
     return {"status": "models loaded"}
 
 
+@app.get("/api/providers", response_model=list[ProviderInfo])
+def list_providers():
+    """前端聊天視窗用來畫「選擇回答模型」下拉選單，含每個 provider 有沒有設定 key。"""
+    return [
+        ProviderInfo(id=pid, label=label, configured=is_configured(pid))
+        for pid, label in PROVIDER_LABELS.items()
+    ]
+
+
 @app.get("/api/admin/summary", response_model=DailySummaryResponse)
 def admin_summary(date: str | None = None):
     """
@@ -100,7 +118,7 @@ def chat(req: ChatRequest, request: Request):
     text = req.message.strip()
     history = [{"role": h.role, "content": h.content} for h in req.history]
     history = history[-(settings.MAX_HISTORY_TURNS * 2):]
-    response = _handle_chat(text, history)
+    response = _handle_chat(text, history, req.provider)
 
     try:
         log_text = response.text if response.text is not None else f"[訂單 {response.code}]"
@@ -112,7 +130,7 @@ def chat(req: ChatRequest, request: Request):
     return response
 
 
-def _handle_chat(text: str, history: list) -> ChatResponse:
+def _handle_chat(text: str, history: list, provider: str) -> ChatResponse:
     if not text:
         return ChatResponse(type="text", text="請輸入您的問題。")
 
@@ -139,6 +157,6 @@ def _handle_chat(text: str, history: list) -> ChatResponse:
         )
 
     agent = get_agent()
-    answer, retrieved = agent.generate_answer(text, history=history)
-    top_source = retrieved[0]["source"] if retrieved else None
+    answer, retrieved = agent.generate_answer(text, history=history, provider=provider)
+    top_source = retrieved[0]["product_name"] if retrieved else None
     return ChatResponse(type="product", text=answer, source=top_source, sources=retrieved)

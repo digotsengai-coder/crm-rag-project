@@ -1,0 +1,18 @@
+{
+  "anthropic": {
+    "api_key": "",
+    "model": "claude-sonnet-4-5-20250929"
+  },
+  "openai": {
+    "api_key": "",
+    "model": "gpt-4o-mini"
+  },
+  "google": {
+    "api_key": "",
+    "model": "gemini-2.0-flash"
+  },
+  "xai": {
+    "api_key": "",
+    "model": "grok-4"
+  }
+}
