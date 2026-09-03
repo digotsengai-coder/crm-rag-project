@@ -79,5 +79,6 @@ npm run dev
 
 - 提案 #3（機器學習銷量預測）、#4（後台數據圖表生成）屬於不同架構（時間序列預測 / Dashboard + 排程推播），
   不在本專案範圍內，可作為獨立的後續模組開發
-- 向量資料庫目前是記憶體版，正式環境建議改用持久化模式（`chromadb.PersistentClient`）
+- 向量資料庫已改用持久化模式（`chromadb.PersistentClient`，索引存在 `backend/chroma_data/`），服務重啟不需要重新 embed；
+  若 `documents.py` 知識庫內容有更動，需手動刪除 `backend/chroma_data/` 目錄以重建索引
 - 訂單資料目前是寫死在 `backend/app/orders.py` 的模擬資料，之後可換成真實訂單資料庫查詢

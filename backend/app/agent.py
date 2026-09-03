@@ -6,9 +6,16 @@ ProductQueryAgent：對應「智慧CRM系統功能提案 #1 顧客查詢產品�
 - retrieve_from_kb() -> 03 查詢 RAG 資料庫
 - generate_answer()  -> 04 根據 RAG 查詢結果給 LLM 回答（整合 01~03 的完整流程入口）
 """
+import threading
+
 from app.rag.vectorstore import get_collection
 from app.rag.embedding import embed_query
 from app.llm import get_llm
+
+# FastAPI 的 sync route 會在 threadpool 裡並行執行，若多個請求同時呼叫 model.generate()
+# 會互搶 CPU 讓大家都變慢（單機、無 GPU 情境下更明顯）。用一把鎖讓 LLM 推論排隊、一次只跑一個，
+# 其餘請求會依序等待而不是同時搶資源；未來若要提升吞吐量，可考慮上 GPU 或跑多個模型副本。
+_generation_lock = threading.Lock()
 
 SYSTEM_PROMPT = (
     "你是官方線上智慧客服機器人，負責回答顧客關於產品規格、保固與常見問題的疑問。"
@@ -21,6 +28,7 @@ SYSTEM_PROMPT = (
 class ProductQueryAgent:
     def __init__(self, system_prompt: str = SYSTEM_PROMPT):
         self.collection = get_collection()
+        get_llm()  # 建構時就把 LLM 一併載入，讓 get_agent() 真正做到完整預載
         self.system_prompt = system_prompt
 
     def receive_query(self, query: str) -> str:
@@ -64,7 +72,8 @@ class ProductQueryAgent:
         text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
-        output_ids = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
+        with _generation_lock:
+            output_ids = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
         generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
         answer = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 

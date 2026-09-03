@@ -1,10 +1,11 @@
 """FastAPI 請求/回應格式。前端依 type 欄位決定要 render 哪一種訊息元件。"""
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):
-    message: str
+    # 上限 500 字：避免超長輸入把 LLM context 塞爆或拖慢生成速度
+    message: str = Field(min_length=1, max_length=500)
 
 
 class SourceRef(BaseModel):

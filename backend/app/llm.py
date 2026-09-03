@@ -20,12 +20,22 @@ def get_llm():
         return _tokenizer, _model
 
     if settings.USE_SMALL_MODEL:
+        # device_map="auto" 會用 accelerate 猜測可用記憶體來分配裝置，
+        # 在沒有 CUDA 的機器上常會誤判、把部分權重 offload 到硬碟（跑起來極慢甚至出錯）。
+        # 明確指定裝置（CPU、或 Apple Silicon 的 MPS）可以避免這個問題。
+        if torch.cuda.is_available():
+            device, dtype = "cuda", torch.float16
+        elif torch.backends.mps.is_available():
+            device, dtype = "mps", torch.float16
+        else:
+            device, dtype = "cpu", torch.float32
+
         model_name = settings.LLM_MODEL_NAME_SMALL
         _tokenizer = AutoTokenizer.from_pretrained(model_name)
         _model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto",
+            torch_dtype=dtype,
+            device_map={"": device},
         )
     else:
         from transformers import BitsAndBytesConfig
