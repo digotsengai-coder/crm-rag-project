@@ -107,10 +107,12 @@ class ProductQueryAgent:
         try:
             answer = generate_with_provider(provider, messages, max_new_tokens=max_new_tokens)
         except ProviderNotConfigured as e:
-            return str(e), retrieved_chunks
+            # 回傳空的 retrieved_chunks（而不是這次真的檢索到的內容）：這則訊息是設定錯誤，
+            # 跟檢索結果無關，main.py 依 retrieved 是否為空決定 type，帶著無關的 source 會誤導使用者。
+            return str(e), []
         except Exception:
             # 線上 API 可能因為網路、額度用盡、key 失效等原因失敗，不該讓整個 /api/chat 500 掉
-            return f"呼叫 {provider} 模型時發生錯誤，請稍後再試或改用其他模型。", retrieved_chunks
+            return f"呼叫 {provider} 模型時發生錯誤，請稍後再試或改用其他模型。", []
 
         return answer, retrieved_chunks
 

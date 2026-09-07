@@ -158,5 +158,9 @@ def _handle_chat(text: str, history: list, provider: str) -> ChatResponse:
 
     agent = get_agent()
     answer, retrieved = agent.generate_answer(text, history=history, provider=provider)
-    top_source = retrieved[0]["topic"] if retrieved else None
+    if not retrieved:
+        # 沒有實際檢索結果（查無資訊、provider 未設定或呼叫失敗）：這是提示/錯誤訊息，不是
+        # 根據知識庫生成的產品/政策回答，依 contracts.md 的分類該用 type: text，且不該帶無關的 source。
+        return ChatResponse(type="text", text=answer)
+    top_source = retrieved[0]["topic"]
     return ChatResponse(type="product", text=answer, source=top_source, sources=retrieved)
