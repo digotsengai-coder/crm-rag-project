@@ -1,0 +1,25 @@
+fastapi==0.115.0
+uvicorn[standard]==0.52.4
+python-dotenv==1.0.1
+pydantic==2.13.5
+mcp==2.0.0b2
+mcp-types==2.0.0b2
+httpx2==2.12.0
+
+# LLM（線上付費 API；xAI Grok 相容 OpenAI SDK 格式，不需要另外的套件）
+anthropic==0.34.2
+openai==1.51.0
+google-generativeai==0.8.3
+
+# 多租戶帳號：Google 登入用來驗證前端拿到的 ID token（app/auth.py）
+google-auth==2.57.1
+
+# 知識庫文件上傳解析 .pdf／.docx（app/main.py 的 _extract_pdf_text／_extract_docx_text）
+pypdf==6.19.0
+python-docx==1.2.0
+
+# RAG 檢索（llamaindex 引擎，唯一支援的引擎）與本地模型（provider=local）用不到這份基礎
+# 依賴，須另外安裝 requirements-local-llm.txt，見 backend/README.md。
+
+# 測試用；orders.py 的 MCP 呼叫改成 async 後，pytest 需要這個外掛才能跑 async 測試
+pytest-asyncio==1.4.0

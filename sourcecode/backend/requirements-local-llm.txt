@@ -1,0 +1,42 @@
+# RAG 只剩 llamaindex 一套引擎，這份不再是選用依賴，任何環境（包含 GCP 正式環境）都要裝。
+# provider=local（本地 LLM）現在改用 MLX（見 requirements-mlx.txt），不再需要這份檔案裡的
+# torch/transformers 跑生成模型。
+#
+# 安裝：pip install -r requirements.txt -r requirements-local-llm.txt
+
+# torch/transformers 給 sentence-transformers／llama-index-embeddings-huggingface
+# 載入 embedding 模型用；版號不用再遷就 openbmb/MiniCPM5-2B 那種新模型的高版本要求
+# （MiniCPM5-2B 已經拿掉，provider=local 改走 MLX，見 app/llm.py），交給 pip 自行解出
+# 跟下面這些套件相容的版本。如果同時也裝了 requirements-mlx.txt，mlx-lm 要求
+# transformers>=5.0.0，pip 會一併納入考量解出兩邊都相容的版本。
+
+# app/llm.py 的 generate() 用這個套件做簡轉繁（台灣用語）後處理，本地模型偶爾還是會
+# 輸出簡體字
+opencc-python-reimplemented==0.1.7
+
+# sentence-transformers／llama-index-embeddings-huggingface（EMBEDDING_BACKEND=huggingface
+# fallback 分支專用，正式環境不會走到）拆到 requirements-embedding-fallback.txt，避免正式
+# image 白背 torch/transformers 這幾百 MB～1GB 的安裝時間，見該檔案開頭說明。
+
+# llamaindex 引擎用（app/rag/llamaindex_engine.py）
+llama-index-core==0.11.17
+
+# EMBEDDING_BACKEND=onnx_int8（預設，見 app/rag/onnx_embedding.py）用 onnxruntime 直接跑
+# int8 量化模型，繞過官方的 optimum 整合套件（跟 transformers 版本硬衝突，見該檔案開頭
+# 說明），這裡明確宣告是因為核心功能直接依賴它，不該只靠隱性的間接依賴。
+onnxruntime==1.29.0
+
+# onnx_embedding.py 的 tokenizer 故意用這個而不是 transformers.AutoTokenizer：
+# AutoTokenizer 會連帶載入 torch（多吃 ~380MB 記憶體），tokenizers 是獨立套件不依賴 torch，
+# 見該檔案開頭說明。這裡本來就是 transformers 的間接依賴，明確宣告版本避免被上游調整。
+tokenizers==0.23.2
+
+# llamaindex 引擎的儲存後端改用 pgvector（PostgreSQL），取代本地磁碟 persist，
+# 換取 LlamaIndex 原生的 insert/delete_ref_doc 增量更新能力（見 app/rag/documents_store.py）。
+# 版本相容區間：llama-index-vector-stores-postgres==0.2.6 要求 llama-index-core>=0.11.0,<0.12.0
+# （跟上面已釘的 0.11.17 相容）；asyncpg 交給 pip 在區間內解析最新 patch 版。
+llama-index-vector-stores-postgres==0.2.6
+pgvector==0.2.5
+psycopg2-binary==2.9.12
+asyncpg>=0.29.0,<0.30.0
+sqlalchemy[asyncio]>=1.4.49,<2.1

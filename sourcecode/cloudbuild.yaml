@@ -1,0 +1,289 @@
+# Google Cloud Build 設定檔
+# 使用 Artifact Registry (europe-west1) 建置與部署至 Cloud Run
+
+steps:
+  # 1. 建置 Backend 容器鏡像（先 pull 上一版當 cache，requirements 沒變就不用重新
+  # pip install，省掉大部分 build 時間；第一次跑（image 還不存在）pull 會失敗，用
+  # || true 吞掉繼續跑無 cache 的 build）
+  - id: 'backend-build'
+    name: 'gcr.io/cloud-builders/docker'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-backend:latest || true
+        docker build \
+          --cache-from europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-backend:latest \
+          -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-backend:latest \
+          ./sourcecode/backend
+
+  # 2. 推送 Backend 鏡像至 Artifact Registry
+  - id: 'backend-push'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['backend-build']
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-backend:latest'
+
+  # 3. 部署 Backend 至 Cloud Run
+  - id: 'backend-deploy'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    waitFor: ['backend-push']
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME-backend'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-backend:latest'
+      - '--region=europe-west1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      # RAG 固定用 llamaindex 引擎，pgvector 統一指向 Supabase 專案的 Transaction pooler
+      # （見 sourcecode/backend/README.md「pgvector（Supabase）」一節）；GEMINI_API_KEY
+      # 仍保留給 provider=google 的 LLM 回答用；RAG_PG_PASSWORD 需先在 Secret Manager
+      # 建立同名 secret，不要用 --set-env-vars 明碼帶密碼
+      - '--set-env-vars=USE_SMALL_MODEL=true,CORS_ORIGINS=*,RAG_PG_HOST=aws-0-ap-northeast-2.pooler.supabase.com,RAG_PG_PORT=6543,RAG_PG_DATABASE=postgres,RAG_PG_USER=postgres.fcakryozwznuhdaucatm,GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
+      - '--set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,RAG_PG_PASSWORD=RAG_PG_PASSWORD:latest'
+      # llamaindex 引擎第一次被呼叫時會 import torch/transformers（llama_index.embeddings
+      # .huggingface，即使 EMBEDDING_BACKEND=onnx_int8 也一樣），實測光 import 就吃掉
+      # ~500MB，Cloud Run 預設 512Mi 記憶體會不夠用，明確調高避免第一個產品問答請求就爆記憶體
+      - '--memory=2Gi'
+      - '--port=8000'
+      - '--cpu=2'
+      - '--concurrency=10'
+
+  # 3.5 取得已部署的 Backend Cloud Run 服務網址
+  - id: 'backend-url'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    waitFor: ['backend-deploy']
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        URL=$$(gcloud run services describe $_SERVICE_NAME-backend --region=europe-west1 --format='value(status.url)')
+        echo "Backend URL is $$URL"
+        echo "$$URL" > /workspace/backend_url.txt
+
+  # 4. 建置 Chat Widget 容器鏡像（傳入已部署的 Backend 網址）
+  - id: 'chat-widget-build'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['backend-url']
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        URL=$$(cat /workspace/backend_url.txt)
+        docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-chat-widget:latest || true
+        docker build \
+          --cache-from europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-chat-widget:latest \
+          --build-arg VITE_API_BASE_URL=$$URL \
+          -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-chat-widget:latest \
+          ./sourcecode/chat-widget
+
+  # 5. 推送 Chat Widget 鏡像至 Artifact Registry
+  - id: 'chat-widget-push'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['chat-widget-build']
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-chat-widget:latest'
+
+  # 6. 部署 Chat Widget 至 Cloud Run
+  - id: 'chat-widget-deploy'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    waitFor: ['chat-widget-push']
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME-chat-widget'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-chat-widget:latest'
+      - '--region=europe-west1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=80'
+
+  # 6.5 取得已部署的 Chat Widget Cloud Run 服務網址
+  - id: 'chat-widget-url'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    waitFor: ['chat-widget-deploy']
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        WIDGET_URL=$$(gcloud run services describe $_SERVICE_NAME-chat-widget --region=europe-west1 --format='value(status.url)')
+        echo "Chat Widget URL is $$WIDGET_URL"
+        echo "$$WIDGET_URL" > /workspace/widget_url.txt
+
+  # 7. 建置 Corp Backend 容器鏡像
+  - id: 'corp-backend-build'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['chat-widget-url']
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/corp-backend:latest || true
+        docker build \
+          --cache-from europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/corp-backend:latest \
+          -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/corp-backend:latest \
+          ./sourcecode/corp-backend
+
+  # 8. 推送 Corp Backend 鏡像至 Artifact Registry
+  - id: 'corp-backend-push'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['corp-backend-build']
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/corp-backend:latest'
+
+  # 9. 部署 Corp Backend 至 Cloud Run
+  - id: 'corp-backend-deploy'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    waitFor: ['corp-backend-push']
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME-corp-backend'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/corp-backend:latest'
+      - '--region=europe-west1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=GCP_PROJECT_ID=$PROJECT_ID'
+      # MCP endpoint 的 Bearer 金鑰：/mcp（唯讀，聊天 backend 用）與 /mcp-admin（管理，聊天不用）各一把。
+      # 部署前必須先在 Secret Manager 建好同名 secret，並讓 Cloud Run 執行身分有 secretAccessor 權限，
+      # 否則這個部署步驟會失敗；沒設定金鑰時 corp-backend 的 MCP endpoint 會一律回 503（見 GCP_DEPLOYMENT.md）。
+      - '--set-secrets=MCP_API_KEY=MCP_API_KEY:latest,MCP_ADMIN_API_KEY=MCP_ADMIN_API_KEY:latest'
+      - '--port=8001'
+
+  # 9.5 取得已部署的 Corp Backend Cloud Run 服務網址
+  - id: 'corp-backend-url'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    waitFor: ['corp-backend-deploy']
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        CORP_URL=$$(gcloud run services describe $_SERVICE_NAME-corp-backend --region=europe-west1 --format='value(status.url)')
+        echo "Corp Backend URL is $$CORP_URL"
+        echo "$$CORP_URL" > /workspace/corp_backend_url.txt
+
+  # 10. 建置 Corp Frontend 容器鏡像（傳入 API、Widget 網址與客戶識別）
+  - id: 'corp-frontend-build'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['backend-url', 'chat-widget-url', 'corp-backend-url']
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        URL=$$(cat /workspace/backend_url.txt)
+        CORP_URL=$$(cat /workspace/corp_backend_url.txt)
+        WIDGET_URL=$$(cat /workspace/widget_url.txt)
+        docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-frontend:latest || true
+        docker build \
+          --cache-from europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-frontend:latest \
+          --build-arg VITE_API_BASE_URL=$$URL \
+          --build-arg VITE_API_CORP_URL=$$CORP_URL \
+          --build-arg VITE_CHAT_WIDGET_URL=$$WIDGET_URL/chat-widget.js \
+          --build-arg VITE_CHAT_WIDGET_CLIENT_ID=${_CHAT_WIDGET_CLIENT_ID} \
+          -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-frontend:latest \
+          ./sourcecode/corp-frontend
+
+  # 11. 推送 Corp Frontend 鏡像至 Artifact Registry
+  - id: 'corp-frontend-push'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['corp-frontend-build']
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-frontend:latest'
+
+  # 12. 部署 Corp Frontend 至 Cloud Run
+  - id: 'corp-frontend-deploy'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    waitFor: ['corp-frontend-push']
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME-corp-frontend'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-frontend:latest'
+      - '--region=europe-west1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=80'
+
+  # 13. 建置 Admin Frontend 容器鏡像（注入訂單與 RAG 各自的 Backend 網址）
+  - id: 'admin-frontend-build'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['backend-url', 'corp-backend-url', 'chat-widget-url']
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        BACKEND_URL=$$(cat /workspace/backend_url.txt)
+        CORP_URL=$$(cat /workspace/corp_backend_url.txt)
+        WIDGET_URL=$$(cat /workspace/widget_url.txt)
+        docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-admin-frontend:latest || true
+        docker build \
+          --cache-from europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-admin-frontend:latest \
+          --build-arg VITE_ADMIN_API_URL=$$CORP_URL \
+          --build-arg VITE_RAG_API_URL=$$BACKEND_URL \
+          --build-arg VITE_GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID} \
+          --build-arg VITE_CHAT_WIDGET_URL=$$WIDGET_URL/chat-widget.js \
+          --build-arg VITE_ADMIN_FRONTEND_URL=${_ADMIN_FRONTEND_URL} \
+          -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-admin-frontend:latest \
+          ./sourcecode/admin-frontend
+
+  # 14. 推送 Admin Frontend 鏡像至 Artifact Registry
+  - id: 'admin-frontend-push'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['admin-frontend-build']
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-admin-frontend:latest'
+
+  # 15. 部署 Admin Frontend 至 Cloud Run
+  - id: 'admin-frontend-deploy'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    waitFor: ['admin-frontend-push']
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE_NAME-admin-frontend'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-admin-frontend:latest'
+      - '--region=europe-west1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=80'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  substitutionOption: 'ALLOW_LOOSE'
+  # 提高 build machine 規格：pip install／npm build 這種 CPU-bound 步驟明顯加快，
+  # 成本增加不多（只在 build 期間計費）
+  machineType: 'E2_HIGHCPU_8'
+
+substitutions:
+  # 正式站 corp-frontend 固定顯示 CRMsquard 這家商家的聊天機器人／RAG 知識庫
+  # （companies 表的 company_id，非隨意字串；見 admin-frontend 的公司設定頁）。
+  # 之後要換成別家商家，或要多商家並存時改用 corp-frontend/index.html 支援的
+  # ?company_id=xxx 網址參數（見 sourcecode/corp-frontend/index.html 的說明）。
+  _CHAT_WIDGET_CLIENT_ID: 'fa0e0ad1-ae3b-4ade-bc09-ae1f552ef55e'
+  # 多租戶帳號（Google 登入）的 OAuth Client ID；backend 用來驗證 ID token 的簽發對象
+  # （GOOGLE_CLIENT_ID），admin-frontend 用來顯示登入按鈕（VITE_GOOGLE_CLIENT_ID），
+  # 兩邊必須是同一組值。留空的話 admin-frontend 會顯示「尚未設定」提示、無法登入，
+  # 正式環境應由 Cloud Build Trigger 覆寫成已在 Google Cloud Console 建立的 Client ID，
+  # 且該 Client ID 的「已授權的 JavaScript 來源」要加上這裡部署出來的 admin-frontend 網址。
+  _GOOGLE_CLIENT_ID: ''
+  # 由 stage／main Cloud Build Trigger 分別注入對應的 Admin Frontend 網址，
+  # 僅供腳本設定頁顯示嵌入程式碼，不作為部署流程判斷。
+  _ADMIN_FRONTEND_URL: ''
+
+images:
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-backend:latest'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-chat-widget:latest'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/corp-backend:latest'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-frontend:latest'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/crm-admin-frontend:latest'

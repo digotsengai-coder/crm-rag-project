@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: crm_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - USE_SMALL_MODEL=true
+      - RAG_ENGINE=gemini
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      - chroma_data:/app/chroma_data
+      - chroma_online_data:/app/chroma_online_data
+    restart: always
+
+  corp-backend:
+    build:
+      context: ./corp-backend
+      dockerfile: Dockerfile
+    container_name: corp_backend
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
+      - FIREBASE_CREDENTIALS_PATH=${FIREBASE_CREDENTIALS_PATH:-}
+      - FIREBASE_CREDENTIALS_JSON=${FIREBASE_CREDENTIALS_JSON:-}
+    restart: always
+
+  chat-widget:
+    build:
+      context: ./chat-widget
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    container_name: crm_chat_widget
+    ports:
+      - "5175:80"
+    depends_on:
+      - backend
+    restart: always
+
+  corp-frontend:
+    build:
+      context: ./corp-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        VITE_API_CORP_URL: ${VITE_API_CORP_URL:-http://localhost:8001}
+        VITE_CHAT_WIDGET_URL: ${VITE_CHAT_WIDGET_URL:-http://localhost:5175/chat-widget.js}
+        VITE_CHAT_WIDGET_CLIENT_ID: ${VITE_CHAT_WIDGET_CLIENT_ID:-client_demo}
+    container_name: crm_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - corp-backend
+      - chat-widget
+    restart: always
+
+  admin-frontend:
+    build:
+      context: ./admin-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:-http://localhost:8001}
+        VITE_RAG_API_URL: ${VITE_RAG_API_URL:-http://localhost:8000}
+        VITE_TENANT_NAME: ${VITE_TENANT_NAME:-CRM Select Demo}
+    container_name: crm_admin_frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+      - corp-backend
+    restart: always
+
+volumes:
+  chroma_data:
+  chroma_online_data:

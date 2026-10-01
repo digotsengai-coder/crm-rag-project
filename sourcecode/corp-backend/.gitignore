@@ -1,0 +1,12 @@
+# Environment & Credentials
+.env
+.env.local
+*.json
+!llm_keys.example.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+.venv/

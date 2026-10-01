@@ -1,0 +1,11 @@
+# 選用依賴：只有在 Apple Silicon（M 系列晶片）Mac 上，想讓本地 LLM 吃到 GPU（Metal）加速
+# 才需要安裝。openbmb/MiniCPM5-2B 在 Apple Silicon 的 MPS 後端會直接 segfault（見
+# app/llm.py 的說明），所以這裡改用 Apple 自家的 MLX 框架跑另一個模型（Qwen3.5-2B），
+# 而不是想辦法讓 MiniCPM5-2B 在 MPS 上能動。
+#
+# 沒裝這份依賴、或不是在 Apple Silicon 上執行，app/llm.py 會自動退回
+# requirements-local-llm.txt 的 transformers + CPU 路徑，不會出錯——這份依賴對正式環境
+# （Cloud Run，x86 Linux）完全沒有作用，不需要安裝。
+#
+# 安裝：pip install -r requirements.txt -r requirements-local-llm.txt -r requirements-mlx.txt
+mlx-lm==0.31.3

@@ -1,19 +1,76 @@
-# Python
-backend/venv/
-backend/__pycache__/
-backend/**/__pycache__/
-backend/.env
-backend/chroma_data/
-backend/llamaindex_data/
-backend/chat_log.db
-backend/orders.db
-backend/llm_keys.json
-*.pyc
-
-# Node
-frontend/node_modules/
-frontend/dist/
-frontend/.env
-
-# OS
+# =========================
+# 作業系統系統檔
+# =========================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# =========================
+# 編輯器與 IDE 設定檔
+# =========================
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*~
+
+# =========================
+# 日誌檔與快取 (Logs & Caches)
+# =========================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.cache/
+.temp/
+.tmp/
+
+# =========================
+# 環境變數與機密資訊 (Credentials)
+# =========================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+llm_keys.json
+
+# =========================
+# 常見語言建置與套件目錄 (依專案取用)
+# =========================
+# Node.js / Web
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# .NET / C#
+bin/
+obj/
+*.user
+*.suo
+
+# Java
+target/
+*.class
+.gradle/

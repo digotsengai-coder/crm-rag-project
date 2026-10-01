@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd sourcecode/backend && OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 NUMEXPR_NUM_THREADS=1 TOKENIZERS_PARALLELISM=false venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000"],
+      "port": 8000
+    },
+    {
+      "name": "corp-backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd sourcecode/corp-backend && venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8001"],
+      "port": 8001
+    },
+    {
+      "name": "corp-frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd sourcecode/corp-frontend && npm run dev -- --host 0.0.0.0 --port 5173"],
+      "port": 5173
+    },
+    {
+      "name": "chat-widget",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd sourcecode/chat-widget && npm run build && npm run preview"],
+      "port": 5175
+    },
+    {
+      "name": "admin-frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd sourcecode/admin-frontend && npm run dev -- --host 0.0.0.0 --port 5174"],
+      "port": 5174
+    }
+  ]
+}

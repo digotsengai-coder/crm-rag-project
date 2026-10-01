@@ -1,0 +1,52 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source("../");
+
+@theme {
+  --color-admin-canvas: #f5f8fc;
+  --color-admin-text: #16213e;
+  --color-admin-heading: #0f2148;
+  --color-admin-heading-secondary: #152750;
+  --color-admin-primary: #1769e0;
+  --color-admin-border: #e2e8f0;
+  --color-admin-muted: #71809a;
+  --color-admin-text-secondary: #53617a;
+  --color-admin-text-subtle: #7b889d;
+  --color-admin-surface: #ffffff;
+  --color-admin-surface-subtle: #f7f9fc;
+  --color-admin-agent-action: #142671;
+  --color-admin-agent-avatar: #1769e0;
+  --color-admin-agent-avatar-bg: #e6f1ff;
+  --color-admin-agent-border: #d7e3f8;
+  --color-admin-agent-title: #0a0a0a;
+  --font-admin: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --text-caption: 0.8125rem;
+  --text-label: 0.6875rem;
+  --text-nav-title: 1.0625rem;
+  --text-icon-control: 1.1875rem;
+  --text-card-heading: 1.375rem;
+  --radius-compact: 0.5625rem;
+  --radius-control: 0.625rem;
+  --radius-metric: 0.875rem;
+  --radius-surface: 0.9375rem;
+  --radius-agent-card: 1rem;
+  --animate-rag-overlay-in: rag-overlay-in 140ms ease-out;
+
+  /* 行銷首頁（WelcomePage）暗色主題 token：與既有 admin-* 淺色主題刻意區隔，避免互相污染 */
+  --color-welcome-bg: #09090b;
+  --color-welcome-bg-card: #18181b;
+  --color-welcome-accent: #10b981;
+  --color-welcome-accent-text: #000000;
+  --color-welcome-text: #d4d4d8;
+  --color-welcome-text-muted: #8b8b93;
+  --color-welcome-border: rgb(255 255 255 / 0.08);
+
+  @keyframes rag-overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

@@ -1,0 +1,60 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap");
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source("../");
+
+@theme {
+  --color-brand-primary: #003285;
+  --color-brand-secondary: #00a67e;
+  --color-brand-accent: #ff7f3e;
+  --color-brand-info: #3b82f6;
+  --color-brand-success: #10b981;
+  --color-brand-danger: #ef4444;
+  --color-store-canvas: #fafbfc;
+  --color-store-canvas-alt: #f0f4f8;
+  --color-store-surface: #ffffff;
+  --color-store-dark: #1e3a5f;
+  --color-store-text: #1a202c;
+  --color-store-muted: #4a5568;
+  --color-store-subtle: #718096;
+  --color-store-border: #e2e8f0;
+  --font-store:
+    "DM Sans", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --text-caption: 0.8125rem;
+  --text-label: 0.6875rem;
+  --text-card-title: 1.3125rem;
+  --text-drawer-title: 1.5625rem;
+  --text-total: 1.75rem;
+  --radius-control: 0.625rem;
+  --radius-field: 0.6875rem;
+  --radius-card: 0.75rem;
+  --radius-toast: 0.8125rem;
+  --radius-highlight: 0.875rem;
+  --shadow-store: 0 12px 32px rgb(30 58 95 / 0.1);
+  --shadow-product: 0 4px 14px rgb(30 58 95 / 0.06);
+  --shadow-drawer: -22px 0 60px rgb(30 58 95 / 0.2);
+  --animate-store-fade-in: store-fade-in 180ms ease both;
+  --animate-store-slide-in: store-slide-in 260ms cubic-bezier(0.22, 1, 0.36, 1)
+    both;
+  --animate-store-toast-in: store-toast-in 220ms ease both;
+
+  @keyframes store-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes store-slide-in {
+    from {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes store-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+}

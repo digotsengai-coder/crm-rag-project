@@ -1,0 +1,13 @@
+# EMBEDDING_BACKEND=huggingface 這個 fallback 分支專用（app/rag/llamaindex_engine.py 的
+# _get_embed_model()，只有非預設值才會 lazy import HuggingFaceEmbedding）。正式環境固定用
+# EMBEDDING_BACKEND=onnx_int8（見 sourcecode/cloudbuild.yaml），不會走到這個分支，所以拆出來
+# 不裝進正式 image，省掉 torch/transformers 這幾百 MB～1GB 的下載/安裝時間。
+#
+# 本機開發如果要切回 EMBEDDING_BACKEND=huggingface 測試，先手動裝這份：
+#   pip install -r requirements-embedding-fallback.txt
+
+# 已退休的 custom 引擎遺留依賴（app/rag/embedding.py 目前沒有任何引擎呼叫它，保留是因為
+# llama-index-embeddings-huggingface 的 fp32 備援路徑仍間接依賴 sentence-transformers）
+sentence-transformers>=3.0.1
+
+llama-index-embeddings-huggingface==0.3.1

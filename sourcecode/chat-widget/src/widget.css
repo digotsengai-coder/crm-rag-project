@@ -1,0 +1,60 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source("../");
+
+@theme {
+  --color-widget-on-primary: #ffffff;
+  --color-widget-background: #fafbfc;
+  --color-widget-muted: #4a5568;
+  --color-widget-subtle: #718096;
+  --color-widget-success: #10b981;
+  --color-widget-border: #e2e8f0;
+  --spacing-widget-panel: 1.125rem;
+  --spacing-widget-message: 0.8125rem;
+  --spacing-widget-icon-gap: 0.3125rem;
+  --spacing-widget-icon: 2.125rem;
+  --spacing-widget-node: 1.625rem;
+  --spacing-widget-input-max: 6.625rem;
+  --leading-widget: 1.3125rem;
+  --font-widget:
+    "DM Sans", system-ui, -apple-system, "PingFang TC", "Noto Sans TC",
+    "Microsoft JhengHei", sans-serif;
+  --font-widget-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --text-caption: 0.8125rem;
+  --text-chip: 0.78125rem;
+  --text-label: 0.6875rem;
+  --text-micro: 0.65625rem;
+  --text-widget-title: 0.9375rem;
+  --radius-control: 0.625rem;
+  --radius-field: 0.75rem;
+  --radius-panel: 0.8125rem;
+  --radius-message: 0.875rem;
+  --shadow-widget-launcher: 0 8px 20px rgb(31 61 87 / 0.24);
+  --shadow-widget-panel: 0 20px 50px rgb(23 33 43 / 0.18);
+  --animate-widget-pop: widget-pop 220ms ease;
+  --animate-widget-bounce: widget-bounce 1.1s infinite ease-in-out;
+
+  @keyframes widget-pop {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes widget-bounce {
+    0%,
+    60%,
+    100% {
+      opacity: 0.5;
+      transform: translateY(0);
+    }
+    30% {
+      opacity: 1;
+      transform: translateY(-4px);
+    }
+  }
+}

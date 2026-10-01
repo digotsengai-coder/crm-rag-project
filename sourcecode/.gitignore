@@ -1,0 +1,29 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.env
+backend/chroma_data/
+backend/llamaindex_data/
+backend/chat_log.db
+backend/orders.db
+backend/llm_keys.json
+corp-backend/*.json
+!corp-backend/*.example.json
+*-firebase-adminsdk-*.json
+*.json.key
+*.pyc
+
+# Node
+corp-frontend/node_modules/
+corp-frontend/dist/
+corp-frontend/.env
+admin-frontend/node_modules/
+admin-frontend/dist/
+admin-frontend/.env
+chat-widget/node_modules/
+chat-widget/dist/
+chat-widget/.env
+
+# OS
+.DS_Store

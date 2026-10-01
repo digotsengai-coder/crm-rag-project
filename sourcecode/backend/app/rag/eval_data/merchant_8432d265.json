@@ -1,0 +1,107 @@
+{
+  "_readme": "RAG 檢索/答案評分用的人工標註資料集，只是靜態資料，目前沒有任何程式碼載入或執行它（見 app/rag/evaluation.py 的 evaluate_dataset() 介面）。relevant_sources 是逐題比對資料庫實際內容（source 欄位）標註出的正確文件路徑，供 Recall@K / NDCG@K 檢索評分使用；expected_answer 是逐題核對文件內容整理出的標準答案（或『文件未提供』），供未來要做答案層級驗證時使用，目前尚未接上任何答案比對邏輯。",
+  "chatbot_id": "8432d265-da0e-4eb8-9a7c-564279777b8e",
+  "chatbot_description": "逐商品一份檔案的知識庫（95 份文件），商品資料來源為 tk3c.com 公開商品頁。",
+  "cases": [
+    {
+      "query": "JLab JBUDS CAM FHD 高畫質網路攝影機的解析度、幀率與視野是多少?",
+      "relevant_sources": ["235337.md"],
+      "expected_answer": "解析度:1080p (30fps)；視野範圍:93°"
+    },
+    {
+      "query": "三星 S27FG532EC(Odyssey G5 27型)的解析度、更新率與反應時間是多少?",
+      "relevant_sources": ["263086.md"],
+      "expected_answer": "解析度2560x1440；更新頻率 200Hz；反應時間:1ms(GTG)"
+    },
+    {
+      "query": "Acer M17無線雙模輕漾滑鼠-灰藍,DPI 有哪些檔位?預設多少?",
+      "relevant_sources": ["264030.md"],
+      "expected_answer": "800 / 1200(預設) / 1600 DPI"
+    },
+    {
+      "query": "PHILIPS TAH2300長續航耳罩式耳機-黑,快充多久能使用多久?",
+      "relevant_sources": ["263032.md"],
+      "expected_answer": "快速充電時間:15分鐘可使用10小時"
+    },
+    {
+      "query": "JBUDS CAM 要讓視訊另一端聽到聲音,內建幾個收音麥克風?",
+      "relevant_sources": ["235337.md"],
+      "expected_answer": "2個全向性麥克風"
+    },
+    {
+      "query": "M71 那款超靜音滑鼠有幾顆按鍵?游標靈敏度是多少?",
+      "relevant_sources": ["239045.md"],
+      "expected_answer": "按鍵式:3鍵式；靈敏度:1200DPI"
+    },
+    {
+      "query": "Studio Pro 藍牙款充十分鐘,能再聽多久?",
+      "relevant_sources": ["216355.md"],
+      "expected_answer": "充電 10 分鐘可播放 1 小時"
+    },
+    {
+      "query": "Acer M17 灰藍與綠色的料號分別是什麼?最高 DPI 有不同嗎?",
+      "relevant_sources": ["264030.md", "264031.md"],
+      "expected_answer": "灰藍「料號ZC.T01TA.4PV」；綠「料號ZC.T01TA.4M4」；兩者最高皆 1600 DPI"
+    },
+    {
+      "query": "JLab Studio Pro 有線版的插頭規格與線長是多少?藍牙版使用哪個藍牙版本?",
+      "relevant_sources": ["216355.md", "216356.md"],
+      "expected_answer": "有線「線材規格:3.5mm」「線材長度:120cm」；藍牙版「Bluetooth 5.0」"
+    },
+    {
+      "query": "Studio Pro 的線長是多少?",
+      "relevant_sources": ["216356.md"],
+      "expected_answer": "只有有線版列「線材長度:120cm」；藍牙版未列線長"
+    },
+    {
+      "query": "Acer M17 的料號是什麼?",
+      "relevant_sources": ["264030.md", "264031.md"],
+      "expected_answer": "灰藍 ZC.T01TA.4PV；綠 ZC.T01TA.4M4"
+    },
+    {
+      "query": "E-books M71 的防水 IP 等級是多少?",
+      "relevant_sources": ["239045.md"],
+      "expected_answer": "該 Markdown 未提供 IP 等級"
+    },
+    {
+      "query": "PHILIPS TAH2300 黑色的 ANC 主動降噪深度是多少 dB?",
+      "relevant_sources": ["263032.md"],
+      "expected_answer": "未提供 ANC 深度；「1 AI mic」及「靈敏度:112dB(1kHz)」不是 ANC 深度證據"
+    },
+    {
+      "query": "Acer M17 灰藍的電池容量是多少 mAh?",
+      "relevant_sources": ["264030.md"],
+      "expected_answer": "該 Markdown 未提供電池容量"
+    },
+    {
+      "query": "JLab Studio Pro 有線版支援哪一版藍牙?",
+      "relevant_sources": ["216356.md"],
+      "expected_answer": "有線版未列藍牙版本；Bluetooth 5.0 屬另一筆 216355"
+    },
+    {
+      "query": "Acer M17 灰藍最高有 3200 DPI,對吧?",
+      "relevant_sources": ["264030.md"],
+      "expected_answer": "800 / 1200(預設) / 1600 DPI（並非 3200 DPI，問題前提有誤）"
+    },
+    {
+      "query": "JLab JBUDS CAM FHD 可以拍 4K 60fps,對嗎?",
+      "relevant_sources": ["235337.md"],
+      "expected_answer": "解析度:1080p (30fps)（並非 4K 60fps，問題前提有誤）"
+    },
+    {
+      "query": "E-books M71 是四鍵滑鼠吧?",
+      "relevant_sources": ["239045.md"],
+      "expected_answer": "按鍵式:3鍵式（並非四鍵，問題前提有誤）"
+    },
+    {
+      "query": "Acer M17 Ultra X999 的最高 DPI 是多少?",
+      "relevant_sources": [],
+      "expected_answer": "測試構造型號；知識庫所有文件皆未提供該完整型號，M17 不等於 M17 Ultra X999"
+    },
+    {
+      "query": "JLab Studio Pro Max Z999 的電池容量是多少?",
+      "relevant_sources": [],
+      "expected_answer": "測試構造型號；知識庫所有文件皆未提供，Studio Pro 不等於 Studio Pro Max Z999"
+    }
+  ]
+}
